@@ -1,0 +1,158 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Poople.io Solver</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+html,body{margin:0;padding:0;background:#000;color:#f8fafc;min-height:100%}
+body{padding:32px 20px;display:flex;justify-content:center;align-items:flex-start}
+.card{background:#0a0a0a;border:2.5px solid #262626;border-radius:30px;padding:48px 40px;max-width:1025px;width:100%;box-shadow:0 15px 50px rgba(0,0,0,.85);text-align:center}
+h2{margin:0 0 12px;font-size:3.1rem;color:#fff}
+p.sub{margin:0 0 24px;font-size:1.95rem;color:#a3a3a3}
+p.sub strong{color:#facc15}
+.status{font-size:1.5rem;color:#737373;margin-bottom:30px}
+.reset-link{color:#a78bfa;text-decoration:underline;cursor:pointer;margin-left:10px;font-size:1.35rem}
+.input-row{display:flex;gap:20px;justify-content:center;margin-bottom:30px}
+input{width:340px;padding:20px 26px;font-size:2.8rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:8px;background:#171717;color:#fff;border:4px solid #333;border-radius:20px;outline:none;transition:border-color .2s}
+input::placeholder{color:#525252}input:focus{border-color:#8b5cf6}
+.btn-group{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+button{padding:20px 36px;font-size:1.95rem;font-weight:600;border:none;border-radius:18px;cursor:pointer;transition:opacity .2s,transform .1s}
+button:active{transform:scale(.98)}button:disabled{opacity:.5;cursor:not-allowed}
+.btn-hint{background:#1f1f1f;color:#e5e5e5;border:2.5px solid #333}
+.btn-solve{background:#7c3aed;color:#fff}
+button:hover:not(:disabled){opacity:.88}
+#output{margin-top:40px;padding-top:30px;border-top:2px solid #1f1f1f;text-align:center;min-height:120px}
+#output:empty{display:none}
+.error{color:#f87171;font-size:1.9rem;font-weight:500}
+.info{color:#a3a3a3;font-size:1.9rem;margin-bottom:24px}
+.thinking{color:#a78bfa;font-size:1.95rem;font-weight:600;animation:pulse 1.2s infinite ease-in-out}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.ladder{display:flex;flex-direction:column;align-items:center;gap:14px}
+.step-row{display:flex;align-items:center;justify-content:center;gap:18px;animation:fadeInStep .45s ease-out forwards}
+@keyframes fadeInStep{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.step{background:#171717;border:2.5px solid #2e2e2e;padding:14px 42px;border-radius:15px;font-weight:700;letter-spacing:8px;font-size:2.5rem;color:#f5f5f5}
+.step.goal{background:#422006;border-color:#f59e0b;color:#fde68a}
+.skip-btn{background:#450a0a;color:#fca5a5;border:2.5px solid #7f1d1d;font-size:1.45rem;padding:10px 18px;border-radius:12px;font-weight:600}
+.arrow{color:#737373;font-size:1.8rem;line-height:1;animation:fadeInStep .35s ease-out forwards}
+</style></head><body>
+<div class="card">
+<h2>💩 Poople.io Solver</h2>
+<p class="sub">Enter today's 4-letter starting word to reach <strong>POOP</strong></p>
+<div id="dictStatus" class="status">Loading...</div>
+<div class="input-row"><input type="text" id="startWord" maxlength="4" placeholder="WORD" autocomplete="off"></div>
+<div class="btn-group">
+<button type="button" id="btnHint" class="btn-hint">Next Step Hint</button>
+<button type="button" id="btnSolve" class="btn-solve">Full Solution</button>
+</div><div id="output"></div></div>
+<script>
+const INITIAL_THINK_DELAY=1400,STEP_REVEAL_DELAY=850,KEY="poople_blocked";
+let saved=[];try{saved=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){}
+const BLOCKED=new Set(["POOS",...saved]),D=new Set();
+const P=
+"AB:BEEDETLELYUT|AC:EDESHEMERE|AD:DS|AE:ON|AG:ARASEDESOG|AH:EDEMOY|AI:DEDELS"+
+"MSRS|AJ:AR|AK:IN|AL:ASBSESFAITKYLALELSLYMSOEPSSTTO|AM:AHASENIDIRMOOKPSUS|AN"+
+":ALASCEEWILISKHNOOASA|AP:AREREDEPESEXODOSSE|AQ:UA|AR:AKBSCHCSDSDYEAIAIDIL"+
+"ISKSLEMSMYRSRSTS|AS:EAESHYKS|AT:APESMAOMOP|AU:KSNTTO|AV:ERIDOW|AW:AYEDEE"+
+"LSNORY|AX:ALELESILISLE|BA:BEBYCKDEGSILITKELDLELLLMNDBENGBNKRBRDRERKRNSES"+
+"HSKSSWL|BE:ADAKAMANARATAUCDDFENEREESETELLLTNDBTRGBSTA|BI:ASKELELLNDBIRDBI"+
+"TB|BL:ABEWOBOCOTOWUEUR|BO:ARATBSILIDLDLELLLTMBNDBENYOKOMONOTRERORNSSTHOUT"+
+"WLWSYS|BR:AGANATAYEDEWIMOW|BU:CKDSFFLBLKBLLMPNKNUNTUOYRNPRRRYSHSTSYYSZZ|"+
+"BY:ESRETE|CA:BEBSECEGEKLFLLLMMEPCNENSCPEPRDRERPRSRTSE|CE:DEDEESLLNTPEPSRE"+
+"ROTE|CH:ADAPARATEFEWICINIPOPOWUGUM|CI:AOELRETA|CL:ADAMANCAPAWYEFIPODOGOP"+
+"OTUBUE|CO:ALATAXCKDECDSOEDGSILINKELELTMBMEONNKOKOLOPPEPYRDRERKRNSTSYVE|CR"+
+":ABAGAMEWIBOPOWUDUX|CU:BEBSFFLLLTRBRDRERL|DA:BSMEMPMSREDARKDARNRT|DE:ADAF"+
+"ALARBTCKEDEMEPERTFY|DI:ALCEEDESETGSMEDSDINEDINGTDPSRE|DO:CKESGSLELLMEDNOO"+
+"ORPEDOSEDOTDTHUROVWN|DR:ABAGAWESIPOPUGRUM|DU:ALCKCTEL|DY:ED|EA:CHRLRNRSSE"+
+"|EB:BS|EC:HO|ED:DYGEGYIT|EE:LS|EG:GS|EL:KSLLMS|EM:IT|EN:VY|EP:IC|ER:ASGO|"+
+"EV:ENIL|EX:AMECIT|EY:ED|FA:CECTDEDSILIRKELLLMMENGNSRERM|FE:ARATEDELESETLL"+
+"LTND|FI:ATBSEFFGSLESLLLMNDFIFKNSRERMFISSHSTTSVE|FL:AGAKAPATAWAYEADLEDER|F"+
+"O:AMESGSIL|FR:AYEEETOGOT|FU:ELLLME|GA:FFGEINGITLALELLMEGNGPEPSRBSHSPTEVE"+
+"WKZE|GE:ARLS|GI:FTSGLLLT|GL:ADEEEWIBOBOMOWUEUM|GN:ATOW|GO:ALATESLDLFNEOD|"+
+"GR:ABADAMAYEWEYIDIM|GU:LLLPMSNSRUSHYSMS|HA:CKILIRKELELFLOLTMSSHNDNG|HE:AD"+
+"ALAPARATEDELFT|HI:DEGHKELLLTNDRE|HO:AXCKEDESLDLELYMENEODOFOKOPOTPEPSRNSE|"+
+"HU:BSHUFFGEGSHULKMPMSNGNKNT|HY:MN|IC:EDESON|ID:EAEMLEOL|IF:FY|IL:LS|IN:CH"+
+"FOIKNS|IO:NS|IR:ISON|IS:LE|IT:CHEM|JA:BSCECKDEILMBMSRSWSYSZZ|JE:EPERLLRK"+
+"STTS|JI:GSGTLT|JO:BSGSINKEJTTSWL|JU:MPNERYST|KE:ELENEP|KI:CKDSLLLNLTNDNG"+
+"NKSS|KN:EEITOBOTOW|LA:BSCECKCYIDINIRKEKILBLMELMPNDNELPLRDRKSHSSSTTETHDVA"+
+"WNWSYS|LE:ADAFAKANAPERFTGSKSLENDSLENTLESSLEVY|LI:ARLICELICKLIDSLIEDLIEN"+
+"LIESLIEULIFELIFTLIKELILTLILYLIMBLIMELIMPLINELINKLINTLIONLIPSLISPLISTLIVE"+
+"|LO:ADAFAMANBELOBSLOCKLOCOLODELOFTLOGOLOGSLOADLONELONGLOOKLOOMLOONLOOPLO"+
+"OTLORDLORELOSELOSSLOSTLOTSLOUDLOUTLOVELOWS|LU:CKFFGSLULLUMPLUNGLURELURKL"+
+"USHLUSTLUTE|LY:NX|MA:CEDEMAGIMAIDMAILMAINMAKEMALEMALLMALTMAMAMANEANYMAPSM"+
+"AREMARKMARSMASHMASKMASSMASTMATEMATHMAULMAZE|ME:ALMEANMEATMEEKMEETMELDHE"+
+"LTEMEMOMENDMENUMEREMESHMESS|MI:CELDMILEMILKMILLMIMEMINDMINEMINTMIREMISS"+
+"MISTMITE|MO:ANATCKDEMOLELLNKODONOROTPEPSREMORNSS|MU:CHCKFFMGSLMUMRMUSHMU"+
+"SKMUSTMUTEMYTH|NA:ILMENAPENAPSNARYNAVY|NE:APARATCKEDONSTTSWTXTATNECKNEED"+
+"NEON|NI:CECKNIGHNINENIPS|NO:DEDSNONENOOKNOONNORMNOSENOSYNOTENOUNTOWS|NU:"+
+"DEKENULLNUMBNUNSNUTS|OA:KSRSOATH|OB:EY|OD:DSES|OI:LS|OK:AY|OL:DS|ON:CE|O"+
+"O:ZE|OP:ALENOPTS|OR:ALBSORESORGY|OU:ST|OV:ENER|OW:EDESOWLSOWNS|PA:CECKPA"+
+"CTPADSPAGEPAIDPAILPAINPAIRPALEPALLPALMPALSPANDPANEPANGPANTSPAPAPAREPARKP"+
+"ARTPASSPASTPATHPAVEPAVSPAWNPAWSPAYS|PE:AKARPEASPEATPECKPEEKPEELPEEPPEERP"+
+"EGSPELLPELTPENSPENTPERKPERMPESTPETSPEWS|PI:CKEDPIERPIESPIKEPILEPILLPIMP"+
+"INEPINGPINKPINSPINTPIPEPISSPITHPITY|PL:ANAYPLEAPLEDPLODPLOPPLOTPLOWPLOY"+
+"PLUGPLUMPLUS|PO:CKEDEMETKEKYLELLLOMPONOLOPORPEPKRTSEOP|PR:AYEYPRIMPRODPR"+
+"OFPROPPROW|PU:FFKEPULLPULPPUMPPUNKPUNSPUPAPUPSPUREPURLPURRPUSHPUTS|QU:AD"+
+"AYQUITQUIZ|RA:CECKRACYRAFTRAGERAGERAIDRAILRAINRAKERAMPRAMSRANGRANKRANTRA"+
+"PERAPSRARERASHRASPRATERATSRAVERAWSRAYS|RE:ADALREAMREAPREARREEDREEFREEKRE"+
+"ELREINRELYRENDRENTREST|RI:CECHRICKRIDERIFERIFTRINDRINGRINKRIOTRIPERIPSRI"+
+"SERISKRITEROADROAMROARROBEROCKRODERODSROLEROLLROMPROOFROOMROOTROPEROSERO"+
+"SYROTEROTSRUINRULERUMPRUNGRUNSRUNTRUSERUSHRUSKRUST|SA:CKDESAFESAGESAIDSA"+
+"ILSAKESALESALTSAMESANDSANESANGSANKSAPSSASHSAUESAVESAWSSAYS|SC:ABAMSCANSC"+
+"ARSCOTSCUM|SE:ALAMSEARSEATSECTSEEDSEEKSEEMSEENSELFSELLSEMISENDSENTSERFSE"+
+"WN|SH:ADAGSHAMSHEDSHINSHIPSHODSHOESHOPSHOTSHOWSHUNSHUT|SI:DEFTGHGNLKSILL"+
+"SITENESINGSINKSINSSIRESITESSIZESGNSINS|SK:EWSKIDSKIMSKINSKIPSKIT|SL:ABA"+
+"GAMAPATAYEDEWIDIMIPITOBOGOPOTOWUGUMURIP|SM:OGUG|SN:APIPSNOBSNOWSNUBSNUG"+
+"|SO:AKAPSOARSOBSSOCKSODASODSSOILSOLDSOLESOLOSOMESONGSOONSOOTSORESORTSOUL"+
+"SOUPSOURSOWN|SP:AWAYSPECSEEDSPINSPITSPOTSPUDSPUR|ST:ABAGSTARSTAYSTEMSTEP"+
+"STEWSTIRSTOPSTOWSTUBSTUDSTUN|SU:CHSUDSUEYSUITSUKISULKSUMSUNGSUNKSURESURF"+
+"|SW:ABAMSWANSWAPSWATSWAYSWIGSWIMSWUM|TA:BSCKTACTTAGSTAILTAKETALETALKTALL"+
+"TAMETANGTANKTAPETAPSTARETARPTARTTASKTAUTTAXI|TE:AMARTEASTECHTEEMTEENTEL"+
+"LTEMPTENDTENTTERMTESTTEXT|TH:ANATTHAWTHEMTHENTHENTHEYTHINTHISTHOUTHUDTH"+
+"UGTHUS|TI:CKDETIDYTIEDTIERTIESTILETILLTILTTIMETINETINYTIPSTIRE|TO:ADESTO"+
+"FUTOILTOLDTOLLTOMBTOMETONETONGTOOKTOOLTOOTTOPSTORETORNTOSS TOURTOWN|TR:A"+
+"SAYTREETREKTRIMTRIOTRIPTRODTROTTRUE|TU:BABETUBSTUCKTUFTTUNATUNETURFTURN"+
+"|TW:IGIN|VA:INVALEVAMP|VE:ILVEINVENTVERBVERYVESTVETO|VI:CEVIEWVILEVIN"+
+"EVISA|VO:IDVOLTVOTE|WA:DEWAGEWAILWAITWAKEWALKWALLWANDWANEWANTWARDWARMWAR"+
+"NWASPWAVEWAVYWAXY|WE:AKWEANWEARWEEDWEEKWEEPWELLWELTWENTWEREWESTWHATWHENWH"+
+"IMWHIPWHIRWICKWIDEWIFEWILDWILLWINDWINEWINGWINKWIPEWIREWISEWISHWITHWOKEWO"+
+"LFWOODWOOLWORDWOREWORKWORMWORNWOVENWRAPWRENWRIT|YA:CHTYARDYARNYAWN|YE:A"+
+"RYELL|YO:GAYOKEYOUR|ZE:ALZEROZESTZONEZOOM";
+P.split("|").forEach(g=>{const[p,r]=g.replace(/\s+/g,"").split(":");
+for(let i=0;i<r.length;i+=2){const w=p+r.slice(i,i+2);if(w.length===4&&!BLOCKED.has(w))D.add(w)}});
+const stEl=document.getElementById("dictStatus"),out=document.getElementById("output"),
+inp=document.getElementById("startWord"),bH=document.getElementById("btnHint"),
+bS=document.getElementById("btnSolve");
+function upd(){stEl.textContent="Ready ("+D.size.toLocaleString()+" four-letter words loaded)";
+if(BLOCKED.size>1){const r=document.createElement("span");r.className="reset-link";
+r.textContent="Reset "+(BLOCKED.size-1)+" skipped";
+r.onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()};
+stEl.appendChild(r)}}
+upd();let timers=[],lastMode="solve";
+function clearT(){timers.forEach(clearTimeout);timers=[]}
+function setDis(v){bH.disabled=v;bS.disabled=v}
+function bfs(s){if(s==="POOP")return["POOP"];const wl=new Set(D);wl.add(s);wl.add("POOP");
+const q=[[s]],v=new Set([s]),az="ABCDEFGHIJKLMNOPQRSTUVWXYZ";while(q.length){
+const p=q.shift(),c=p[p.length-1];for(let i=0;i<4;i++){const pre=c.slice(0,i),suf=c.slice(i+1);
+for(let j=0;j<26;j++){const ch=az[j];if(ch===c[i])continue;const nx=pre+ch+suf;
+if(nx==="POOP")return[...p,"POOP"];if(wl.has(nx)&&!v.has(nx)){v.add(nx);q.push([...p,nx])}}}}return null}
+function run(mode){lastMode=mode;clearT();
+const s=inp.value.trim().toUpperCase().replace(/[^A-Z]/g,"");inp.value=s;
+if(s.length!==4){out.textContent="";const err=document.createElement("div");err.className="error";
+err.textContent="Please enter a valid 4-letter word.";out.appendChild(err);return}
+setDis(true);out.textContent="";const th=document.createElement("div");th.className="thinking";
+th.textContent="Finding path to POOP...";out.appendChild(th);timers.push(setTimeout(()=>{
+const path=bfs(s);out.textContent="";if(!path){setDis(false);const err=document.createElement("div");
+err.className="error";err.textContent="No path found from "+s+" to POOP.";out.appendChild(err);return}
+const steps=mode==="hint"?path.slice(0,2):path;const inf=document.createElement("div");inf.className="info";
+inf.textContent=mode==="hint"?"Next step hint":"Solved in "+(path.length-1)+" step"+(path.length-1===1?"":"s");
+out.appendChild(inf);const ld=document.createElement("div");ld.className="ladder";out.appendChild(ld);
+steps.forEach((w,i)=>{timers.push(setTimeout(()=>{if(i>0){const a=document.createElement("div");
+a.className="arrow";a.textContent="↓";ld.appendChild(a)}const r=document.createElement("div");
+r.className="step-row";const st=document.createElement("div");st.className="step"+(w==="POOP"?" goal":"");
+st.textContent=w;r.appendChild(st);if(i>0&&w!=="POOP"){const sk=document.createElement("button");
+sk.type="button";sk.className="skip-btn";sk.textContent="Skip";sk.addEventListener("click",()=>{
+D.delete(w);BLOCKED.add(w);try{localStorage.setItem(KEY,JSON.stringify([...BLOCKED]))}catch(e){}
+upd();run(lastMode)});r.appendChild(sk)}ld.appendChild(r);
+if(i===steps.length-1)setDis(false)},i*STEP_REVEAL_DELAY))})},INITIAL_THINK_DELAY))}
+bH.addEventListener("click",()=>run("hint"));bS.addEventListener("click",()=>run("solve"));
+inp.addEventListener("keydown",e=>{if(e.key==="Enter")run("solve")});
+</script></body></html>
